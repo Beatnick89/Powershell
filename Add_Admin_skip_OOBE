@@ -1,21 +1,21 @@
 # Konfigurierbare Variablen
 $Benutzername = "AutoAdmin"
 $Passwort = "Sicheres!Passwort123"   # Setze hier ein sicheres Passwort
-$FullName = "Automatisch erstellter Admin"
-$Beschreibung = "Lokales Administratorkonto durch RMM erstellt"
 
 # Benutzer erstellen
 Try {
     $SecurePassword = ConvertTo-SecureString $Passwort -AsPlainText -Force
-    New-LocalUser -Name $Benutzername -Password $SecurePassword -FullName $FullName -Description $Beschreibung -AccountNeverExpires
+    New-LocalUser -Name $Benutzername -Password $SecurePassword -FullName $FullName -AccountNeverExpires
     $OutputUser = "Benutzer $Benutzername wurde erstellt."
 } Catch {
     $OutputUser = "Benutzer konnte nicht erstellt werden: $_"
 }
 
-# Zur Administratorgruppe hinzufügen
+# Administratorgruppe über SID referenzieren (S-1-5-32-544 = Built-in Administrators)
 Try {
-    Add-LocalGroupMember -Group "Administratoren" -Member $Benutzername
+    $AdminGroupSID = New-Object System.Security.Principal.SecurityIdentifier("S-1-5-32-544")
+    $AdminGroup = $AdminGroupSID.Translate([System.Security.Principal.NTAccount]).Value
+    Add-LocalGroupMember -Group $AdminGroup -Member $Benutzername
     $OutputPriv = "Benutzer $Benutzername wurde zur Administratorgruppe hinzugefügt."
 } Catch {
     $OutputPriv = "Benutzer konnte nicht zur Administratorgruppe hinzugefügt werden: $_"
