@@ -1,0 +1,32 @@
+# Konfigurierbare Variablen
+$Benutzername = "AutoAdmin"
+$Passwort = "Sicheres!Passwort123"   # Setze hier ein sicheres Passwort
+$FullName = "Automatisch erstellter Admin"
+$Beschreibung = "Lokales Administratorkonto durch RMM erstellt"
+
+# Benutzer erstellen
+Try {
+    $SecurePassword = ConvertTo-SecureString $Passwort -AsPlainText -Force
+    New-LocalUser -Name $Benutzername -Password $SecurePassword -FullName $FullName -Description $Beschreibung -AccountNeverExpires
+    $OutputUser = "Benutzer $Benutzername wurde erstellt."
+} Catch {
+    $OutputUser = "Benutzer konnte nicht erstellt werden: $_"
+}
+
+# Zur Administratorgruppe hinzufügen
+Try {
+    Add-LocalGroupMember -Group "Administratoren" -Member $Benutzername
+    $OutputPriv = "Benutzer $Benutzername wurde zur Administratorgruppe hinzugefügt."
+} Catch {
+    $OutputPriv = "Benutzer konnte nicht zur Administratorgruppe hinzugefügt werden: $_"
+}
+
+# OOBE überspringen (Registry-Werte setzen)
+Try {
+    reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE" /v SkipMachineOOBE /t REG_DWORD /d 1 /f
+    reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE" /v SkipUserOOBE /t REG_DWORD /d 1 /f
+    reg add "HKLM\SYSTEM\Setup\Status\SysprepStatus" /v CleanupState /t REG_DWORD /d 2 /f
+    $OutputOOBE = "OOBE-Registrierungswerte wurden gesetzt."
+} Catch {
+    $OutputOOBE = "Fehler beim Setzen der OOBE-Registry-Werte: $_"
+}
