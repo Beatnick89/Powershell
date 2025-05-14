@@ -1,0 +1,14 @@
+$Results = Get-BitLockerVolume | ForEach-Object {
+    $Drive = "Laufwerk: $($_.MountPoint)"
+    
+    $_.KeyProtector | Where-Object { $_.KeyProtectorType -eq "RecoveryPassword" } | ForEach-Object {
+        [PSCustomObject]@{
+            Laufwerk                     = $Drive
+            Wiederherstellungsschlüssel = $_.RecoveryPassword
+            KennwortID                   = $_.KeyProtectorId
+        }
+    }
+}
+
+# Ausgabe in Konsole
+$Results
