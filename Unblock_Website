@@ -1,0 +1,24 @@
+# Admin-Rechte erforderlich
+if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+    Write-Warning "Bitte führen Sie dieses Skript als Administrator aus!"
+    exit
+}
+
+# Pfad zur Hosts-Datei
+$hostsPath = "$env:windir\System32\drivers\etc\hosts"
+
+# Website, die entsperrt werden soll
+$website = "example.com"
+
+# Hosts-Datei lesen
+$hostsContent = Get-Content -Path $hostsPath
+
+# Einträge für die Website entfernen
+$newContent = $hostsContent | Where-Object { $_ -notmatch "127.0.0.1\s+$website" -and $_ -notmatch "127.0.0.1\s+www.$website" }
+
+# Hosts-Datei aktualisieren
+Set-Content -Path $hostsPath -Value $newContent
+Write-Host "$website wurde erfolgreich entsperrt."
+
+# DNS-Cache leeren
+ipconfig /flushdns
