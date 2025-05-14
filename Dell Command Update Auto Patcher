@@ -1,0 +1,92 @@
+﻿function Get-DCUInstallDetails {
+    # Declare Variables for Universal app if RegKey AppCode is Universal or if Regkey AppCode is Classic and declares their variables otherwise reports not installed
+    If((Get-ItemPropertyValue HKLM:\SOFTWARE\DELL\UpdateService\Clients\CommandUpdate\Preferences\Settings -Name AppCode -ErrorAction SilentlyContinue) -eq "Universal"){
+        $Version = Get-ItemPropertyValue HKLM:\SOFTWARE\DELL\UpdateService\Clients\CommandUpdate\Preferences\Settings -Name ProductVersion -ErrorAction SilentlyContinue
+        $AppType = Get-ItemPropertyValue HKLM:\SOFTWARE\DELL\UpdateService\Clients\CommandUpdate\Preferences\Settings -Name AppCode -ErrorAction SilentlyContinue
+        # Add DCU-CLI.exe as Environment Variable for Universal app type
+        $DCUPath = 'C:\Program Files\Dell\CommandUpdate\'
+    }
+    ElseIf((Get-ItemPropertyValue HKLM:\SOFTWARE\DELL\UpdateService\Clients\CommandUpdate\Preferences\Settings -Name AppCode -ErrorAction SilentlyContinue) -eq "Classic"){
+        $Version = Get-ItemPropertyValue HKLM:\SOFTWARE\DELL\UpdateService\Clients\CommandUpdate\Preferences\Settings -Name ProductVersion
+        $AppType = Get-ItemPropertyValue HKLM:\SOFTWARE\DELL\UpdateService\Clients\CommandUpdate\Preferences\Settings -Name AppCode
+        # Add DCU-CLI.exe as Environment Variable for Classic app type
+        $DCUPath = 'C:\Program Files (x86)\Dell\CommandUpdate\'
+    }
+    Else{
+        $DCU = "DCU is not installed"
+    }
+
+    if ($Version){
+        $DCU = [PSCustomObject]@{
+            Version = $Version
+            AppType = $AppType
+            DCUPath = $DCUPath
+        }
+    }
+
+    return $DCU
+}
+
+# Example usage of the function
+$DCUInstallDetails = Get-DCUInstallDetails
+
+
+# Function to download and install Dell Command Update using the installer from Dell's website
+function Install-DellCommandUpdateUsingInstaller {
+    # URL of the Dell Command Update installer
+    $installerUrl = "https://dl.dell.com/FOLDER11914128M/1/Dell-Command-Update-Windows-Universal-Application_9M35M_WIN_5.4.0_A00.EXE"
+    # Path where the installer will be downloaded
+    $installerPath = "$env:TEMP\DCU_Setup.exe"
+    
+    try {
+        # Download the installer
+        Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath -ErrorAction Stop
+        $OutputDownload = "Installer downloaded successfully to $installerPath"
+        
+        # Install the application silently
+        Start-Process -FilePath $installerPath -ArgumentList '/s' -Wait -NoNewWindow -ErrorAction Stop
+        $OutputSuccess = "Dell Command Update installation completed successfully"
+        
+        # Clean up by removing the installer file
+        Remove-Item $installerPath -Force -ErrorAction Stop
+        
+        return $true
+    } catch {
+        $ErrorDetails = $_.Exception.Message
+        $Outputfailed = "Failed to install Dell Command Update. Error: $ErrorDetails"
+        
+        # Return false and log more specific error information
+        return $false
+    }
+}
+
+# Main script logic
+try {
+    # Call the function to install Dell Command Update using the installer from Dell's website
+    $installSuccess = Install-DellCommandUpdateUsingInstaller
+    
+    # Set status based on installation success
+    if ($installSuccess) {
+        $statusMessage = 'Dell Command Update successfully installed'
+        $OutputStatus = $statusMessage
+        
+        # Log status to a file
+        $logFile = "$env:TEMP\install_log.txt"
+        Add-Content -Path $logFile -Value "Installation Success: $statusMessage"
+    } else {
+        $statusMessage = 'Install Failed'
+        $OutputStatus = $statusMessage
+        
+        # Log failure with more detailed error information
+        $logFile = "$env:TEMP\install_log.txt"
+        Add-Content -Path $logFile -Value "Installation Failed: $statusMessage"
+    }
+} catch {
+    # Handle any errors during the installation process
+    $ErrorDetails = $_.Exception.Message
+    $OutputError = "Error during installation process: $ErrorDetails"
+    
+    # Log the error with more detailed information
+    $logFile = "$env:TEMP\install_log.txt"
+    Add-Content -Path $logFile -Value "Installation Error: $ErrorDetails"
+}
