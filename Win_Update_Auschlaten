@@ -1,0 +1,10 @@
+# PowerShell als Administrator ausführen!
+
+# Windows Update-Dienst stoppen
+Stop-Service -Name wuauserv -Force
+
+# Starttyp auf 'Deaktiviert' setzen
+Set-Service -Name wuauserv -StartupType Disabled
+
+# Optional: Bestätigung ausgeben
+Write-Host "Windows Update wurde deaktiviert." -ForegroundColor Green
