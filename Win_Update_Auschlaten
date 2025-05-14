@@ -1,10 +1,37 @@
-# PowerShell als Administrator ausführen!
+# PowerShell-Skript: Windows Update dauerhaft deaktivieren
+# ACHTUNG: Mit Administratorrechten ausführen!
 
-# Windows Update-Dienst stoppen
-Stop-Service -Name wuauserv -Force
+Write-Host "Deaktiviere Windows Update-Dienste..." 
 
-# Starttyp auf 'Deaktiviert' setzen
+# 1. Windows Update-Dienst deaktivieren
+Stop-Service -Name wuauserv -Force -ErrorAction SilentlyContinue
 Set-Service -Name wuauserv -StartupType Disabled
 
-# Optional: Bestätigung ausgeben
-Write-Host "Windows Update wurde deaktiviert." -ForegroundColor Green
+# 2. Windows Update Medic Service deaktivieren (per Registry)
+Set-ItemProperty -Path "HKLM\SYSTEM\CurrentControlSet\Services\WaaSMedicSvc" -Name "Start" -Value 4
+
+# 3. Update Orchestrator Service deaktivieren (per Registry)
+Set-ItemProperty -Path "HKLM\SYSTEM\CurrentControlSet\Services\UsoSvc" -Name "Start" -Value 4
+
+# 4. Geplante Tasks deaktivieren (Update-bezogen)
+$tasks = @(
+    "\Microsoft\Windows\WindowsUpdate\Scheduled Start",
+    "\Microsoft\Windows\UpdateOrchestrator\Schedule Scan",
+    "\Microsoft\Windows\UpdateOrchestrator\UpdateModel",
+    "\Microsoft\Windows\UpdateOrchestrator\Reboot"
+)
+
+foreach ($task in $tasks) {
+    try {
+        Disable-ScheduledTask -TaskPath $task.Substring(0, $task.LastIndexOf('\') + 1) -TaskName ($task.Split('\')[-1]) -ErrorAction SilentlyContinue
+        Write-Host "Task deaktiviert: $task"
+    } catch {
+        Write-Host "Task nicht gefunden oder nicht deaktivierbar: $task"
+    }
+}
+
+# 5. Gruppenrichtlinie via Registry: Nur Benachrichtigen, keine automatischen Updates
+New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" -Force | Out-Null
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" -Name "AUOptions" -Value 2
+
+Write-Host "`n Windows Update wurde dauerhaft deaktiviert." 
